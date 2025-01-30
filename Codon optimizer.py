@@ -718,7 +718,9 @@ gfp_aa_seq = "MSKGEELFTGVVPILVELDGDVNGHKFSVSGEGEGDATYGKLTLKFICTTGKLPVPWPTLVTTFSY
 target_species = { "Bacillus subtilis": 2, "Escherichia coli": 8, "Saccaromyces cerevisiae": 3, "Synechocystis sp. PCC 6803": 1, "Vibrio natriegens": 1 }  # original optimimzation, actual pDestination fluorescence
 # target_species = { "Bacillus subtilis": 1, "Danio rerio": 1, "Escherichia coli": 8, "Saccaromyces cerevisiae": 1, "Vibrio natriegens": 1 }  # pBsaI fluorescence
 # target_species = { "Escherichia coli": 3, "Vibrio natriegens": 1 }  # Golden Gate enzymes
-target_species = {}
+target_species = {}  # the weights of the species to optimize for
+
+restriction_enzymes = []  # the restriction enzymes to use
 
 def add_codon_preference(pref_list, label):
 	'''
@@ -937,6 +939,7 @@ def find_bad_seqs(seq):
 			rand_sites.append((index, index + len(bad_seq)))
 	# checks for restriction sites
 	prs = []  # possible restriction sites
+	'''
 	restriction_enzymes = [
 		"ggatcc",	# BamHI
 		"gaagac",	# BbsI # semi-important
@@ -957,6 +960,7 @@ def find_bad_seqs(seq):
 		"tctaga",	# XbaI ## important ##
 		"ctcgag"	# XhoI
 		]
+	'''
 	for restriction_site in restriction_enzymes:
 		prs.append(restriction_site)
 		if restriction_site != reverse_complement(restriction_site):  # if the restriction site isn't palindromic
@@ -1029,14 +1033,20 @@ def optimize_amino_acids():
 	'''
 	turn a string of amino acids or DNA into a species-optimized sequence of DNA
 	'''
-	sequence = input_2.get().lower()
+	global restriction_enzymes
+	sequence = aa_input.get().lower()
 	# sequence = gfp_aa_seq.lower()  # default sequence for testing
-	if (sequence == "" or " " in sequence) and input_1.get() != "" and not " " in input_1.get():  # if the amino acid input isn't filled but the DNA input is
-		sequence = dna_to_aa(input_1.get())
+	if (sequence == "" or " " in sequence) and DNA_input.get() != "" and not " " in DNA_input.get():  # if the amino acid input isn't filled but the DNA input is
+		sequence = dna_to_aa(DNA_input.get())
 	elif " " in sequence:  # if the sequence data is just placeholder text and there's no DNA input
 		sequence = ""
 	random.seed(42)  # makes optimizations reproducible
 	best_seq = { "seq": "", "score": float("-inf"), "probs": [], "bad_probs": [], "gc": 0, "unsuccessful": 0 }
+	restriction_enzymes = []
+	for box in restriction_checkbuttons:
+		if box.selected.get():
+			restriction_enzymes.append(box.seq)
+	print(restriction_enzymes)
 	for _ in range(80):  # finds the best of 80 random optimization attempts
 		p = { "seq": "", "score": 100, "probs": [], "bad_probs": [], "gc": 0 }
 		# assigns codons to every amino acid based on the codon preferences
@@ -1182,6 +1192,7 @@ def toggle_enzymes():
 
 gui = GUI(title="Codon optimizer")
 # title
+gui.pack_padding(2)
 gui.make_text("Codon optimizer", 15).pack()
 # theme radiobuttons
 theme_buttons = gui.make_frame()
@@ -1195,7 +1206,7 @@ checkboxes_frame = gui.make_frame()
 show_species = gui.make_checkbutton("Show species weights", command=toggle_species, parent=checkboxes_frame)
 show_species.grid(column=0, row=0)
 show_enzymes = gui.make_checkbutton("Show restriction sites", command=toggle_enzymes, parent=checkboxes_frame)
-### show_enzymes.grid(column=1, row=0)
+show_enzymes.grid(column=1, row=0)
 checkboxes_frame.pack(pady=5)
 # species section
 species_boxes = []
@@ -1231,6 +1242,7 @@ for box in species_boxes:
 		box.entry.insert(0, "0")
 # enzymes section
 enzymes_section = gui.make_frame()
+gui.make_text("Select restriction sites to avoid", 4, parent=enzymes_section).grid(row=0, column=0, columnspan=4, sticky="ew")
 enzyme_cuts = {
 	"BamHI": "ggatcc",
 	"BbsI": "gaagac",
@@ -1251,17 +1263,21 @@ enzyme_cuts = {
 	"XbaI": "tctaga",
 	"XhoI": "ctcgag"
 }
+restriction_checkbuttons = []
 index = 0
 for name, site in enzyme_cuts.items():
-	gui.make_checkbutton("{} ({})".format(name, site.upper()), parent=enzymes_section, selected=True).grid(column=index%4, row=index//4, padx=2, pady=2, sticky="w")
+	checkbox = gui.make_checkbutton("{} ({})".format(name, site.upper()), parent=enzymes_section, selected=False)
+	checkbox.seq = site
+	checkbox.grid(column=index%4, row=index//4+1, padx=2, pady=2, sticky="w")
+	restriction_checkbuttons.append(checkbox)
 	index += 1
 # allows inputting DNA or amino acids
 input_frame = gui.make_frame()
-input_1 = gui.make_entry(placeholder="DNA here", parent=input_frame)
-input_1.grid(column=0, row=0)
+DNA_input = gui.make_entry(placeholder="DNA here", parent=input_frame)
+DNA_input.grid(column=0, row=0)
 gui.make_text(" or ", 5, parent=input_frame).grid(column=1, row=0)
-input_2 = gui.make_entry(placeholder="Amino acids here", parent=input_frame)
-input_2.grid(column=2, row=0)
+aa_input = gui.make_entry(placeholder="Amino acids here", parent=input_frame)
+aa_input.grid(column=2, row=0)
 input_frame.pack(pady=5)
 # shows codon preferences or optimization results
 buttons_frame = gui.make_frame()
