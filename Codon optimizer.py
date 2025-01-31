@@ -271,6 +271,7 @@ class GUI:
 	def make_entry(self, parent=window, placeholder="", **extras):
 		'''
 		creates a text input for user input
+		use entry_reference.is_empty() to return a boolean of whether the input is empty (or has the placeholder value)
 		'''
 		widget = tk.Entry(parent, relief="flat", borderwidth=1, highlightbackground=fg, highlightcolor="blue", highlightthickness=1, background=bg, foreground=fg, insertbackground=fg, **extras)
 		### identifier = self.canvas.create_window(x*self.unit, y*self.unit, window=widget)
@@ -285,6 +286,7 @@ class GUI:
 					input_box.insert(0, placeholder)
 			input_box.bind("<FocusIn>", focusIn)
 			input_box.bind("<FocusOut>", focusOut)
+		input_box.is_empty = lambda: input_box.get() == "" or input_box.get() == placeholder
 		self.widget_list.append(input_box)
 		return input_box
 
@@ -326,15 +328,22 @@ class GUI:
 	def make_checkbutton(self, label, selected=False, cursor="hand2", parent=window, **extras):
 		'''
 		creates a checkbox
-		use checkbutton_reference.selected.get() to retrieve a boolean of whether the box is checked or not
+		use checkbutton_reference.is_selected() to retrieve a boolean of whether the box is checked or not
 		'''
 		checked = tk.BooleanVar(value=selected)
 		checkbox = tk.Checkbutton(parent, text=label, variable=checked, bg=bg, fg=fg, selectcolor=bg, cursor=cursor, **extras)
-		checkbox.selected = checked
+		checkbox.is_selected = checked.get
 		self.widget_list.append(checkbox)
 		return checkbox
 	
 	def make_radiobutton(self, grouping, value, label, selected=False, cursor="hand2", parent=window, **extras):
+		'''
+		creates a radio button
+
+		grouping = the name of the group the radio button belongs to
+		value = the value of the radio button
+		label = the text to display next to the radio button
+		'''
 		if grouping not in self.radiobutton_groups:
 			self.radiobutton_groups[grouping] = tk.StringVar()
 		radio = tk.Radiobutton(parent, text=label, variable=self.radiobutton_groups[grouping], value=value, bg=bg, fg=fg, selectcolor=bg, cursor=cursor, **extras)
@@ -711,6 +720,9 @@ codon_dict = {
 aa_prefs = {}
 
 gfp_aa_seq = "MSKGEELFTGVVPILVELDGDVNGHKFSVSGEGEGDATYGKLTLKFICTTGKLPVPWPTLVTTFSYGVQCFSRYPDHMKQHDFFKSAMPEGYVQERTIFFKDDGNYKTRAEVKFEGDTLVNRIELKGIDFKEDGNILGHKLEYNYNSHNVYIMADKQKNGIKVNFKIRHNIEDGSVQLADHYQQNTPIGDGPVLLPDNHYLSTQSALSKDPNEKRDHMVLLEFVTAAGITHGMDELYK*"
+### The following is a sequence that almost doubles the optimizer output for a random seed of 42.
+### Normal GFP will sometimes almost double when a seed isn't set.
+### gfp_aa_seq = "MSKGEELFTGVVPILVELDGDVNGHKFSVSGEGEGDATYGKLTLKFICTTGKLPVPWPTLVTTFSYGVQCFSRYPDHMKQHDFFKSAMPEGYVQERTIFFKDDGNYKTRAEVKFEGDTLVNRIELKGIDFKEDGNILGHKLEYNYNSHNVYIMADKQKNGIKVNFKHNIEDGSVQLADHYQQNTPIGPVLLPDNHYLSTQSALSKDPKRDHMVLLEFVTAAGITHGMDELYK*"
 
 # target_species = { "Saccaromyces cerevisiae": 1, "Procambarus clarkii": 1, "Escherichia coli": 1, "Caenorhabditis elegans": 1, "Aliivibrio fischeri": 1, "Pyrocystis fusiformis": 1, "Vibrio natriegens": 1, "Physcomitrella patens": 1, "Synechocystis sp. PCC 6803": 1, "Deinococcus radiodurans R1": 1, "Danio rerio": 1, "Drosophila melanogaster": 1, "Homo sapiens": 1, "Oryza sativa": 1, "Bacillus subtilis": 1, "Arabidopsis thaliana": 1, "Populus trichocarpa": 1, "Haloferax volcanii": 1, "Hydra vulgaris": 1 }  # all the species
 # target_species = { "Escherichia coli": 1, "Saccaromyces cerevisiae": 1 }  # demonstration of how saccaromyces ruins everything
@@ -780,8 +792,9 @@ def set_preferences():
 	takes into account your species preference
 	'''
 	global aa_dict, codon_dict, aa_prefs, target_species
+	# sets the internal weights for each species
 	for box in species_boxes:
-		target_species[box.get_label()] = int(box.entry.get())
+		target_species[box.get_label()] = int(box.entry.get() or 0)
 	ts = {key: value for key, value in target_species.items() if value != 0}  # removes species with a weight of 0
 	print(ts)
 	if not ts:  # if no species are selected
@@ -1034,17 +1047,19 @@ def optimize_amino_acids():
 	turn a string of amino acids or DNA into a species-optimized sequence of DNA
 	'''
 	global restriction_enzymes
-	sequence = aa_input.get().lower()
-	# sequence = gfp_aa_seq.lower()  # default sequence for testing
-	if (sequence == "" or " " in sequence) and DNA_input.get() != "" and not " " in DNA_input.get():  # if the amino acid input isn't filled but the DNA input is
-		sequence = dna_to_aa(DNA_input.get())
-	elif " " in sequence:  # if the sequence data is just placeholder text and there's no DNA input
-		sequence = ""
+	sequence = ""
+	if not aa_input.is_empty():  # if amino acids were provided
+		sequence = aa_input.get().strip().lower()
+	elif not DNA_input.is_empty():  # if DNA was provided
+		sequence = dna_to_aa(DNA_input.get().strip())
+	else:  # if no sequence was provided
+		messagebox.showerror("Error", "No sequence data was provided.")
+		raise ValueError("No sequence data was provided.")
 	random.seed(42)  # makes optimizations reproducible
 	best_seq = { "seq": "", "score": float("-inf"), "probs": [], "bad_probs": [], "gc": 0, "unsuccessful": 0 }
 	restriction_enzymes = []
 	for box in restriction_checkbuttons:
-		if box.selected.get():
+		if box.is_selected():
 			restriction_enzymes.append(box.seq)
 	print(restriction_enzymes)
 	for _ in range(80):  # finds the best of 80 random optimization attempts
@@ -1156,6 +1171,7 @@ def optimize_amino_acids():
 		result.text.tag_add("issue", "1.{}".format(start), "1.{}".format(end))
 	for start, end in best_seq["bad_probs"]:
 		result.text.tag_add("bad_issue", "1.{}".format(start), "1.{}".format(end))
+	'''
 	# draws attention to important parts of the sequence
 	result.text.tag_config("underline", underline=1)
 	for site in ["gatatc", "ggtctc"]:
@@ -1165,16 +1181,22 @@ def optimize_amino_acids():
 			locations.extend(find_overlapping(best_seq["seq"], reverse_complement(site)))
 		for i in locations:
 			result.text.tag_add("underline", "1.{}".format(i), "1.{}".format(i+span))
+	'''
 	# returns the cursor back to nomal
 	gui.root.config(cursor="")
 	optimize_button.config(cursor="hand2")
 
 def start_optimizing():
 	set_preferences()
+	# aa_input.delete(0, "end")
+	# aa_input.insert(0, gfp_aa_seq.lower())  # provides a default amino acid sequence for testing purposes
 	if any(weight > 0 for weight in target_species.values()):  # if at least one species has a weight greater than zero
-		gui.root.config(cursor="watch")
-		optimize_button.config(cursor="watch")
-		threading.Thread(target=optimize_amino_acids).start()
+		if not (DNA_input.is_empty() and aa_input.is_empty()):  # if a sequence was provided
+			gui.root.config(cursor="watch")
+			optimize_button.config(cursor="watch")
+			threading.Thread(target=optimize_amino_acids).start()
+		else:
+			messagebox.showerror("Error", "No sequence was provided to optimize.")
 	else:
 		messagebox.showerror("Error", "At least one species must have a weight greater than zero.")
 
