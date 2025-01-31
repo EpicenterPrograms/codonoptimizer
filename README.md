@@ -24,6 +24,8 @@ This begins the optimization process. You should expect it to take several secon
 <br>
 
 ## Interpreting the output
+### WARNING
+For some sequences, the output appears to be almost twice as long as expected for an unknown reason. Changing the sequence (such as by adding or removing a stop codon) seems to sidestep the issue for the time being.
 ### Score
 The score shows the quality of the sequence, especially with the ability to avoid undesirable sequences. A perfect score is very difficult to attain, but that doesn't mean a useful sequence is very difficult to attain.
 ### GC content
@@ -35,7 +37,7 @@ The output should be primarily green with occasional blue and a proportional gra
 
 ## Algorithm
 ### Overview
-80 attempts are made to generate a sequence from scratch, and if no sequence is perfect (the most likely outcome), the highest-scoring sequence is given 80 attempts to fix the problem areas. Each sequence starts with a score of 100, and every time any imperfection is found, a certain amount is subtracted. It's rather unlikely to get a perfect score, but the reason the score was decreased could be rather minor.
+80 attempts are made to generate a sequence from scratch, and if no sequence is perfect (the most likely outcome), the highest-scoring sequence is given 80 attempts to fix the problem areas. Each sequence starts with a score of 100, and every time any imperfection is found, a certain amount is subtracted. It's rather unlikely to get a perfect score, but the reason the score was decreased could be rather minor. **A number is chosen to seed the random processes, so running the same sequence with the same settings will always produce the same result.**
 ### Codon preferences
 The preferences used are ones which indicate how much a given codon is used compared to the other codons which code for the same amino acid. When combining the preferences of multiple species, the end result is generally a weighted average calculated from the specified weights of the species; however, low preferences are calculated differently. When a preference is below 11%, the unweighted average for that codon is found, and the lowest value of the following options is chosen: 1.5 times the lowest species preference, the unweighted average, or the threshold value (11%). Codons with greater preference have their percentages adjusted proportionally to make sure the total continues being 100%. **When only a single species is specified,** all codon preferences are the same as that species except that codons below 8% preference aren't used. The score of a generated sequence is decreased by the floored percent error of the presence of each codon exceeding the tolerance of 100%.
 ### Avoided sequences
