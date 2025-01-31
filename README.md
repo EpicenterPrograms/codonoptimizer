@@ -24,6 +24,8 @@ This begins the optimization process. You should expect it to take several secon
 <br>
 
 ## Interpreting the output
+### WARNING
+For some sequences, the output appears to be almost twice as long as expected for an unknown reason. Changing the sequence (such as by adding or removing a stop codon) seems to sidestep the issue for the time being.
 ### Score
 The score shows the quality of the sequence, especially with the ability to avoid undesirable sequences. A perfect score is very difficult to attain, but that doesn't mean a useful sequence is very difficult to attain.
 ### GC content
