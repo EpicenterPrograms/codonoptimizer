@@ -3,7 +3,7 @@ This allows optimizing codons to multiple organisms (or just one)
 '''
 
 __author__ = "Robert Benson"
-__date__ = "2023"
+__date__ = "1/30/2025"
 
 import site
 import tkinter as tk
@@ -1319,3 +1319,16 @@ result = gui.make_text("", 5, width=80, height=12)
 result.pack()
 # show the window
 gui.appear()
+
+### Future areas for improvement:
+# fixing the weird doubling error
+# specifying the seed
+# specifying sequences to underline
+# loading FASTA files
+# setting custom sequences to avoid
+# specifying capital or lowercase output
+# considering custom species preferences
+# making a progress bar
+# preventing the content from shifting awkwardly / add a scrollbar
+# make non-zero weights a different color
+# only show score and GC content after optimization
